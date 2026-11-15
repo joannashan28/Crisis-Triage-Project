@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Y: disaster feed</title>
+  <link rel="stylesheet" href="feed.css">
+</head>
+<body>
+  <!--
+    A plain, X-style timeline filled with CrisisBench TEST tweets.
+    This page knows nothing about the model. All triage labels, filters,
+    and the answer key are added by the Chrome extension (extension/),
+    the same way an extension would sit on top of the real X website.
+  -->
+  <div class="layout">
+    <header class="sidebar">
+      <a class="logo" href="/" aria-label="Y home">Y</a>
+    </header>
+
+    <main class="timeline" aria-label="Timeline">
+      <div class="timeline-header">
+        <h1 class="timeline-title">Disaster feed</h1>
+
+        <div class="feed-tabs" role="tablist" aria-label="Which tweets to show">
+          <button class="feed-tab is-selected" role="tab" aria-selected="true"
+                  data-mode="all" type="button">Test tweets</button>
+          <button class="feed-tab" role="tab" aria-selected="false"
+                  data-mode="errors" type="button">Known mistakes</button>
+        </div>
+
+        <div class="feed-controls">
+          <label class="event-label" for="event-picker">Disaster</label>
+          <select id="event-picker" class="event-picker">
+            <option value="all">All disasters</option>
+          </select>
+          <span class="feed-count" id="feed-count" aria-live="polite"></span>
+        </div>
+      </div>
+
+      <div id="timeline-tweets" class="timeline-tweets"></div>
+
+      <p id="feed-message" class="feed-message" hidden></p>
+
+      <button id="load-more" class="load-more" type="button" hidden>Show more tweets</button>
+    </main>
+
+    <aside class="about" aria-label="About this feed">
+      <section class="about-card">
+        <h2 class="about-title">About this feed</h2>
+        <p>Every tweet here comes from the CrisisBench test set. The triage models never saw these tweets during training.</p>
+        <p>Names and handles are hidden. CrisisBench releases tweet text only, and responders do not need to know who posted.</p>
+        <p><strong>Known mistakes</strong> shows only test tweets the pipeline labeled differently from the human annotators.</p>
+      </section>
+    </aside>
+  </div>
+
+  <script src="feed.js"></script>
+</body>
+</html>

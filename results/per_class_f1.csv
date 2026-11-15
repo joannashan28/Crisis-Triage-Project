@@ -1,0 +1,56 @@
+section,model,label,display_name,f1_mean
+stage2,bertweet-base,affected_individual,Affected individuals,0.7868
+stage2,bertweet-base,caution_and_advice,Caution and advice,0.7097
+stage2,bertweet-base,displaced_and_evacuations,Displaced or evacuations,0.5310
+stage2,bertweet-base,donation_and_volunteering,Donations and volunteering,0.8051
+stage2,bertweet-base,infrastructure_and_utilities_damage,Infrastructure damage,0.7193
+stage2,bertweet-base,injured_or_dead_people,Injured or dead people,0.8283
+stage2,bertweet-base,missing_and_found_people,Missing or found people,0.4595
+stage2,bertweet-base,not_humanitarian,"Other (informative, no category)",0.9222
+stage2,bertweet-base,requests_or_needs,Requests or needs,0.9306
+stage2,bertweet-base,response_efforts,Response efforts,0.4258
+stage2,bertweet-base,sympathy_and_support,Sympathy and support,0.7298
+stage2,majority,affected_individual,Affected individuals,0.0000
+stage2,majority,caution_and_advice,Caution and advice,0.0000
+stage2,majority,displaced_and_evacuations,Displaced or evacuations,0.0000
+stage2,majority,donation_and_volunteering,Donations and volunteering,0.0000
+stage2,majority,infrastructure_and_utilities_damage,Infrastructure damage,0.0000
+stage2,majority,injured_or_dead_people,Injured or dead people,0.0000
+stage2,majority,missing_and_found_people,Missing or found people,0.0000
+stage2,majority,not_humanitarian,"Other (informative, no category)",0.7426
+stage2,majority,requests_or_needs,Requests or needs,0.0000
+stage2,majority,response_efforts,Response efforts,0.0000
+stage2,majority,sympathy_and_support,Sympathy and support,0.0000
+stage2,tfidf_lr,affected_individual,Affected individuals,0.7240
+stage2,tfidf_lr,caution_and_advice,Caution and advice,0.6525
+stage2,tfidf_lr,displaced_and_evacuations,Displaced or evacuations,0.4000
+stage2,tfidf_lr,donation_and_volunteering,Donations and volunteering,0.7396
+stage2,tfidf_lr,infrastructure_and_utilities_damage,Infrastructure damage,0.6525
+stage2,tfidf_lr,injured_or_dead_people,Injured or dead people,0.7804
+stage2,tfidf_lr,missing_and_found_people,Missing or found people,0.4607
+stage2,tfidf_lr,not_humanitarian,"Other (informative, no category)",0.9076
+stage2,tfidf_lr,requests_or_needs,Requests or needs,0.8583
+stage2,tfidf_lr,response_efforts,Response efforts,0.2722
+stage2,tfidf_lr,sympathy_and_support,Sympathy and support,0.6657
+end_to_end,bertweet-base -> bertweet-base,affected_individual,Affected individuals,0.7940
+end_to_end,bertweet-base -> bertweet-base,caution_and_advice,Caution and advice,0.7850
+end_to_end,bertweet-base -> bertweet-base,displaced_and_evacuations,Displaced or evacuations,0.4898
+end_to_end,bertweet-base -> bertweet-base,donation_and_volunteering,Donations and volunteering,0.8213
+end_to_end,bertweet-base -> bertweet-base,infrastructure_and_utilities_damage,Infrastructure damage,0.7065
+end_to_end,bertweet-base -> bertweet-base,injured_or_dead_people,Injured or dead people,0.8230
+end_to_end,bertweet-base -> bertweet-base,missing_and_found_people,Missing or found people,0.5185
+end_to_end,bertweet-base -> bertweet-base,not_actionable,No action needed,0.9356
+end_to_end,bertweet-base -> bertweet-base,requests_or_needs,Requests or needs,0.9225
+end_to_end,bertweet-base -> bertweet-base,response_efforts,Response efforts,0.5128
+end_to_end,bertweet-base -> bertweet-base,sympathy_and_support,Sympathy and support,0.7389
+end_to_end,tfidf_lr -> tfidf_lr,affected_individual,Affected individuals,0.7811
+end_to_end,tfidf_lr -> tfidf_lr,caution_and_advice,Caution and advice,0.6389
+end_to_end,tfidf_lr -> tfidf_lr,displaced_and_evacuations,Displaced or evacuations,0.5143
+end_to_end,tfidf_lr -> tfidf_lr,donation_and_volunteering,Donations and volunteering,0.7662
+end_to_end,tfidf_lr -> tfidf_lr,infrastructure_and_utilities_damage,Infrastructure damage,0.7056
+end_to_end,tfidf_lr -> tfidf_lr,injured_or_dead_people,Injured or dead people,0.8198
+end_to_end,tfidf_lr -> tfidf_lr,missing_and_found_people,Missing or found people,0.5417
+end_to_end,tfidf_lr -> tfidf_lr,not_actionable,No action needed,0.9157
+end_to_end,tfidf_lr -> tfidf_lr,requests_or_needs,Requests or needs,0.8404
+end_to_end,tfidf_lr -> tfidf_lr,response_efforts,Response efforts,0.2353
+end_to_end,tfidf_lr -> tfidf_lr,sympathy_and_support,Sympathy and support,0.6685

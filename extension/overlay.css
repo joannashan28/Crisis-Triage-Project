@@ -1,0 +1,177 @@
+/*
+  Triage overlay. Each labeled tweet gets a colored rule down its left edge
+  (the category color), so a responder scanning the feed can see categories
+  at a glance before reading any text. Everything else stays quiet so the
+  feed still feels like the timeline it sits on.
+*/
+
+:root {
+  --triage-surface: #ffffff;
+  --triage-text: #0f1419;
+  --triage-muted: #536471;
+  --triage-rule: #eff3f4;
+  --triage-chip: #f7f9f9;
+  --triage-warning: #b42318;
+  --triage-warning-surface: #fef3f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --triage-surface: #000000;
+    --triage-text: #e7e9ea;
+    --triage-muted: #8b9198;
+    --triage-rule: #2f3336;
+    --triage-chip: #16181c;
+    --triage-warning: #ff8a80;
+    --triage-warning-surface: #2a1210;
+  }
+}
+
+/* The bar of category tabs */
+
+.triage-bar {
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--triage-rule);
+  background: var(--triage-surface);
+  color: var(--triage-text);
+}
+
+.triage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.triage-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.triage-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--triage-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.triage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.triage-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--triage-rule);
+  border-radius: 999px;
+  background: var(--triage-surface);
+  color: var(--triage-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.triage-tab:hover {
+  background: var(--triage-chip);
+}
+
+.triage-tab.is-active {
+  border-color: var(--triage-text);
+  background: var(--triage-text);
+  color: var(--triage-surface);
+}
+
+.triage-tab:focus-visible {
+  outline: 2px solid #1d9bf0;
+  outline-offset: 2px;
+}
+
+.triage-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.triage-status {
+  min-height: 1.2em;
+  margin: 8px 0 0;
+  color: var(--triage-muted);
+  font-size: 13px;
+}
+
+.triage-error {
+  color: var(--triage-warning);
+  background: var(--triage-warning-surface);
+}
+
+/* Colored dots (in tabs and on tweets) */
+
+.triage-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--triage-color, #6b7178);
+}
+
+/* Labeled tweets */
+
+article.triage-labeled {
+  box-shadow: inset 4px 0 0 var(--triage-color);
+}
+
+article.triage-hidden {
+  display: none;
+}
+
+.triage-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.triage-badge.is-pending {
+  color: var(--triage-muted);
+}
+
+.triage-name {
+  font-weight: 700;
+  color: var(--triage-text);
+}
+
+.triage-confidence {
+  color: var(--triage-muted);
+}
+
+/* Answer key: hidden until the switch is on */
+
+.triage-answer {
+  display: none;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--triage-muted);
+}
+
+.triage-show-answers .triage-answer {
+  display: flex;
+}
+
+.triage-disagree {
+  color: var(--triage-warning);
+  font-weight: 700;
+}
+
+.triage-show-answers article.triage-mismatch {
+  background: var(--triage-warning-surface);
+}

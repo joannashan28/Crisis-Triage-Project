@@ -1,0 +1,13 @@
+# Training and evaluation
+torch>=2.1
+transformers>=4.40,<5
+emoji>=2.0          # needed by BERTweet's tweet normalization
+scikit-learn>=1.3
+numpy>=1.24
+matplotlib>=3.7
+joblib>=1.3
+
+# Demo server
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.0

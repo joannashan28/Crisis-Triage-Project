@@ -1,0 +1,11 @@
+# CrisisBench data: download it separately (see README)
+data/*
+!data/.gitkeep
+
+# Trained models and run outputs are too large for GitHub; regenerate with the scripts
+runs/*
+!runs/.gitkeep
+
+__pycache__/
+*.pyc
+.DS_Store
