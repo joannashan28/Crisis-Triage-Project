@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Y Triage</title>
+<!-- Deliberately X/Twitter look: a parody feed that triages (team design choice, 2026-10-08 UI mock). -->
+<!-- Every prediction on this page comes from the demo server (server/app.py, POST /api/classify); tweets and their gold labels come from GET /api/feed, the model's test scores from GET /api/metrics. No animations or transitions. -->
+<style>
+  :root {
+    --text: #0f1419; --gray: #536471; --line: #eff3f4; --hover: #f7f9f9; --blue: #1d9bf0; --bg: #ffffff; --red: #f4212e; --green: #00704a;
+    --c-requests_or_needs: #f4212e;
+    --c-missing_and_found_people: #7856ff;
+    --c-injured_or_dead_people: #8b0000;
+    --c-displaced_and_evacuations: #ff7a00;
+    --c-infrastructure_and_utilities_damage: #b8860b;
+    --c-caution_and_advice: #ffd400;
+    --c-affected_individual: #f91880;
+    --c-donation_and_volunteering: #00ba7c;
+    --c-response_efforts: #1d9bf0;
+    --c-sympathy_and_support: #a78bfa;
+    --c-not_humanitarian: #aab8c2;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--text); background: var(--bg); font-size: 15px; line-height: 20px; }
+  button, select, textarea, input { font: inherit; }
+  button { cursor: pointer; }
+  svg { width: 1.25em; height: 1.25em; fill: currentColor; flex: none; }
+
+  .shell { display: grid; grid-template-columns: 275px 600px 350px; justify-content: center; min-height: 100vh; }
+  /* left nav */
+  .nav { position: sticky; top: 0; height: 100vh; padding: 4px 12px; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+  .logo { font-weight: 900; font-size: 30px; padding: 12px; line-height: 1; letter-spacing: -1px; }
+  .navitem { display: flex; align-items: center; gap: 20px; padding: 12px; border-radius: 999px; font-size: 20px; color: var(--text); background: none; border: 0; text-decoration: none; }
+  .navitem svg { width: 26px; height: 26px; }
+  .navitem:hover { background: #e7e7e8; }
+  .navitem.on { font-weight: 700; }
+  .postbtn { margin-top: 16px; width: 90%; background: var(--text); color: #fff; border: 0; border-radius: 999px; font-weight: 700; font-size: 17px; padding: 15px; }
+  .me { margin-top: auto; margin-bottom: 12px; display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 999px; }
+  .me small { display: block; color: var(--gray); }
+
+  /* center */
+  main { border-left: 1px solid var(--line); border-right: 1px solid var(--line); min-height: 100vh; min-width: 0; }
+  .top { position: sticky; top: 0; background: rgba(255,255,255,.95); z-index: 2; border-bottom: 1px solid var(--line); }
+  .tabs { display: flex; }
+  .tab { flex: 1; background: none; border: 0; padding: 16px 0 0; color: var(--gray); font-weight: 500; display: flex; justify-content: center; }
+  .tab:hover { background: rgba(15,20,25,.1); }
+  .tab span { padding-bottom: 14px; border-bottom: 4px solid transparent; }
+  .tab.on { color: var(--text); font-weight: 700; }
+  .tab.on span { border-bottom-color: var(--blue); }
+  .tab.narrow { display: none; }
+  .controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 8px 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--gray); }
+  .controls label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .controls b { color: var(--text); }
+  .controls select { font-size: 13px; padding: 2px 4px; border: 1px solid #cfd9de; border-radius: 6px; background: #fff; max-width: 230px; }
+  .controls select:disabled { color: var(--text); opacity: 1; }
+  .controls input[type=range] { width: 110px; accent-color: var(--blue); }
+  #status { margin-left: auto; }
+  .chiprow { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 10px; }
+  .fchip { white-space: nowrap; border: 1px solid #cfd9de; background: #fff; border-radius: 999px; padding: 4px 10px; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+  .fchip:hover { background: var(--hover); }
+  .fchip.on { background: var(--text); color: #fff; border-color: var(--text); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+
+  .composer { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .composer textarea { width: 100%; border: 0; resize: vertical; font-size: 20px; line-height: 26px; padding: 8px 0; min-height: 64px; color: var(--text); outline: none; }
+  .composer textarea::placeholder { color: var(--gray); }
+  .composer .row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--gray); font-size: 13px; }
+  .composer .row .over { color: var(--red); }
+  .composer .row button { background: var(--text); color: #fff; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+  .composer .row button:disabled { opacity: .5; cursor: default; }
+
+  .post { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .post:hover { background: rgba(0,0,0,.03); }
+  .post.filtered .text { color: var(--gray); }
+  .post.mine { background: #f2f9fe; }
+  .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
+  .av.anon { background: color-mix(in srgb, var(--av) 18%, white); overflow: hidden; }
+  .av.anon svg { width: 100%; height: 100%; fill: color-mix(in srgb, var(--av) 45%, white); }
+  .body { min-width: 0; }
+  .ctx { color: var(--gray); font-size: 13px; margin-bottom: 2px; }
+  .head { display: flex; gap: 4px; align-items: center; color: var(--gray); white-space: nowrap; overflow: hidden; }
+  .head b { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+  .text { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .text .lnk { color: var(--blue); }
+  .actions { display: flex; justify-content: space-between; max-width: 425px; margin-top: 10px; color: var(--gray); }
+  .actions svg { width: 18px; height: 18px; }
+
+  /* the triage overlay: everything in it comes from the API response or the gold label */
+  .overlay { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-top: 8px; padding: 6px 8px; border-radius: 10px; background: var(--hover); border: 1px dashed #cfd9de; font-size: 13px; }
+  .overlay .yt { font-weight: 800; font-size: 11px; letter-spacing: .04em; color: var(--gray); }
+  .lab { display: inline-flex; gap: 6px; align-items: center; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .num { color: var(--gray); font-variant-numeric: tabular-nums; }
+  .flag { color: #b0001a; font-weight: 700; }
+  .gold { margin-left: auto; color: var(--gray); }
+  .gold.ok b { color: var(--green); }
+  .gold.no b { color: var(--red); }
+  .empty { padding: 32px 16px; color: var(--gray); }
+  .error { padding: 16px; margin: 12px 16px; border-radius: 10px; background: #fde8ea; color: #b0001a; }
+
+  /* right column */
+  aside { padding: 0 0 64px 30px; }
+  .box { border: 1px solid var(--line); border-radius: 16px; margin-top: 16px; overflow: hidden; }
+  .box h2 { font-size: 20px; font-weight: 800; margin: 0; padding: 12px 16px; line-height: 24px; }
+  .box .sub { color: var(--gray); font-size: 13px; padding: 0 16px 10px; margin-top: -6px; }
+  .brief { padding: 0 16px 12px; margin: 0; }
+  .brief ul { margin: 6px 0; padding-left: 18px; }
+  .brief li { margin-bottom: 2px; }
+  .brief .note { margin: 8px 0 0; font-size: 13px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); }
+  .stat { padding: 10px 4px; text-align: center; border-right: 1px solid var(--line); }
+  .stat:last-child { border-right: 0; }
+  .stat b { display: block; font-size: 20px; }
+  .stat span { font-size: 11px; color: var(--gray); }
+  .stat.red b { color: var(--red); }
+  .trow { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; text-align: left; }
+  .trow:hover { background: var(--hover); }
+  .trow.on { background: #e8f5fd; }
+  .trow .k { color: var(--gray); font-size: 13px; }
+  .trow .t { font-weight: 700; display: flex; gap: 8px; align-items: center; }
+  .trow .n { color: var(--gray); font-size: 13px; align-self: center; }
+  .act { padding: 10px 16px; border-top: 1px solid var(--line); }
+  .act .m { color: var(--gray); font-size: 13px; }
+  .about { padding: 0 16px 12px; font-size: 14px; }
+  .about p { margin: 0 0 8px; }
+  .about ul { margin: 0 0 8px; padding-left: 18px; }
+  .about li { margin-bottom: 4px; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--blue); }
+  .linkbtn:hover { text-decoration: underline; }
+  .foot { color: var(--gray); font-size: 13px; padding: 16px 4px; }
+
+  @media (max-width: 1280px) { .shell { grid-template-columns: 88px 600px 350px; } .navitem span, .postbtn, .me div { display: none; } .nav { align-items: center; } }
+  @media (max-width: 1060px) {
+    .shell { grid-template-columns: 72px minmax(0, 600px); }
+    aside { display: none; padding: 0 16px 48px; }
+    .tab.narrow { display: flex; }
+    body.summary aside { display: block; grid-column: 2; grid-row: 1; margin-top: 150px; }
+    body.summary #feed, body.summary .composer, body.summary .chiprow { display: none; }
+  }
+  @media (max-width: 560px) {
+    .shell { grid-template-columns: minmax(0, 1fr); }
+    .nav { display: none; }
+    body.summary aside { grid-column: 1; }
+    .actions { max-width: none; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="nav">
+    <div class="logo">Y</div>
+    <a class="navitem on" href="#" data-go="foryou"><svg viewBox="0 0 24 24"><path d="M21.6 8.6 12.6 1.8a1 1 0 0 0-1.2 0L2.4 8.6A1 1 0 0 0 2 9.4V21a1 1 0 0 0 1 1h6.5v-7h5v7H21a1 1 0 0 0 1-1V9.4a1 1 0 0 0-.4-.8z"/></svg><span>Home</span></a>
+    <a class="navitem" href="#" data-go="triage"><svg viewBox="0 0 24 24"><path d="M4 2h2v1h13.4l-2.7 5 2.7 5H6v9H4V2zm2 3v6h10l-1.6-3L16 5H6z"/></svg><span>Triage</span></a>
+    <a class="navitem" href="#" data-go="filtered"><svg viewBox="0 0 24 24"><path d="M3 5h18v2H3V5zm3 6h12v2H6v-2zm3 6h6v2H9v-2z"/></svg><span>Filtered out</span></a>
+    <a class="navitem" href="#about"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><span>About</span></a>
+    <button class="postbtn" id="postNav">Post</button>
+    <div class="me"><span class="av" style="background:#1d9bf0">R</span><div><b>Relief desk</b><small>@responder_demo</small></div></div>
+  </nav>
+
+  <main>
+    <div class="top">
+      <div class="tabs">
+        <button class="tab on" data-tab="foryou"><span>For you</span></button>
+        <button class="tab" data-tab="triage"><span>Triage</span></button>
+        <button class="tab" data-tab="filtered"><span id="filteredTab">Filtered out</span></button>
+        <button class="tab narrow" data-tab="summary"><span>Summary</span></button>
+      </div>
+      <div class="controls">
+        <label>Model <select id="backend" disabled></select></label>
+        <label>Disaster <select id="event"><option value="all">All disasters</option></select></label>
+        <label title="Only test tweets the pipeline got wrong at the server's τ (the server's --errors file)"><input type="checkbox" id="knownMistakes"> Known mistakes</label>
+        <label>τ <input type="range" id="tau" min="0" max="1" step="0.05" value="0.5"> <b id="tauVal">0.50</b></label>
+        <!-- hidden for the demo (Known mistakes covers it); the score box's "Show only the wrong ones" link still toggles it -->
+        <label style="display:none" title="Only the loaded posts the model gets wrong at the current τ"><input type="checkbox" id="onlyWrong"> Only wrong</label>
+        <span id="status"></span>
+      </div>
+      <div class="chiprow" id="chips"></div>
+    </div>
+
+    <form class="composer" id="composer">
+      <span class="av" style="background:#1d9bf0">R</span>
+      <div>
+        <textarea id="draft" placeholder="What is happening?! Type or paste a post to classify it." rows="2"></textarea>
+        <div class="row"><span id="count">0 / 280</span><button type="submit" id="send" disabled>Classify</button></div>
+      </div>
+    </form>
+
+    <div id="feed"></div>
+  </main>
+
+  <aside>
+    <div class="box">
+      <h2>Responder summary</h2>
+      <p class="brief" id="brief"></p>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="box">
+      <h2>Act on these first</h2>
+      <div class="sub">Posts the model puts in requests, missing people, injuries, or evacuations, highest category score first.</div>
+      <div id="actfirst"></div>
+    </div>
+
+    <div class="box">
+      <h2>How it did on this feed</h2>
+      <div class="brief" id="score"></div>
+    </div>
+
+    <div class="box">
+      <h2>What's happening</h2>
+      <div class="sub">Predicted categories. Click one to filter the Triage tab.</div>
+      <div id="cats"></div>
+    </div>
+
+    <div class="box" id="about">
+      <h2>About this model</h2>
+      <div class="about">
+        <p><b>For:</b> helping people sort a flood of disaster posts. <b>Not for:</b> deciding who gets help.</p>
+        <p id="aboutModel"></p>
+        <p><b>How it works.</b> Stage 1 scores how likely a post is to be informative (<i>p_informative</i>). Posts with p_informative ≥ τ go to Stage 2, which picks one of 10 humanitarian categories, or <b>Other</b> for an informative post that fits none of them (<i>p_category</i> is its score for that category). The rest go to <b>Filtered out</b>. Nothing is deleted, so a missed call for help stays one click away.</p>
+        <p><b>Known limitations</b></p>
+        <ul>
+          <li>English only.</li>
+          <li>Trained on CrisisBench tweets from about 2010–2018, before Twitter became X. How people post has changed since.</li>
+          <li>It only sees people who post. People who lost power or signal, don't use X, or don't write in English are missing, and the loudest posters aren't always the most urgent.</li>
+          <li>Scores aren't certainty. Posts near τ or with a low category score are marked <span class="flag">needs review</span>.</li>
+        </ul>
+        <p id="aboutFeed"></p>
+      </div>
+    </div>
+
+    <p class="foot">"Y" is a class-project parody, not X. Tweets: CrisisBench (Alam et al., ICWSM 2021), CC BY-NC-SA 4.0, non-commercial use. COSC 72/272 crisis-triage. <a href="/feed/" style="color:inherit">Extension feed</a></p>
+  </aside>
+
+</div>
+<script>
+const CATS = [
+  ["requests_or_needs",                  "Requests / urgent needs"],
+  ["missing_and_found_people",           "Missing / found people"],
+  ["injured_or_dead_people",             "Injured or dead"],
+  ["displaced_and_evacuations",          "Displaced / evacuations"],
+  ["infrastructure_and_utilities_damage","Infrastructure & utilities"],
+  ["caution_and_advice",                 "Caution & advice"],
+  ["affected_individual",                "Affected individuals"],
+  ["donation_and_volunteering",          "Donations & volunteering"],
+  ["response_efforts",                   "Response efforts"],
+  ["sympathy_and_support",               "Sympathy & support"],
+];
+const NON_HUM = "not_humanitarian";
+// End-to-end gold (server's config.NOT_ACTIONABLE_LABEL): annotators said "not informative", or
+// informative but "not humanitarian". The pipeline's end_to_end_label uses the same two-way merge.
+const NOT_ACTIONABLE = "not_actionable";
+const CAT_NAME = { ...Object.fromEntries(CATS), [NON_HUM]: "Other", [NOT_ACTIONABLE]: "No action needed" };
+const PRIORITY = { ...Object.fromEntries(CATS.map((c, i) => [c[0], i])), [NON_HUM]: CATS.length };
+// chips and "What's happening" rows: the 10 categories, then Other (informative, no category; never "act first")
+const SHOWN_CATS = [...CATS, [NON_HUM, CAT_NAME[NON_HUM]]];
+const ACT_FIRST = CATS.slice(0, 4).map(c => c[0]);
+// "needs review" marks (display only): a low category score, or p_informative close to τ
+const REVIEW_P_CATEGORY = 0.5;
+const REVIEW_MARGIN = 0.1;
+const FEED_PAGE = 50;     // server's MAX_FEED_PAGE
+const FEED_CHUNK = 200;   // tweets loaded at a time (4 pages)
+const CLASSIFY_MAX = 100; // server's MAX_TWEETS_PER_REQUEST
+const GOLD_MEANS = "the label annotators gave the tweet in CrisisBench (end to end: a category, or no action needed)";
+
+let feed = [], mine = [], results = {};
+let status = null, metrics = null, feedTotal = 0, eventFilter = "all", feedMode = "all";
+let tab = "foryou", catFilter = null, shown = null;
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const col = cat => `var(--c-${cat})`;
+const pct = p => p.toFixed(2);
+const pctDown = p => (Math.floor(p * 100) / 100).toFixed(2);  // a filtered 0.2998 shows 0.29 < τ 0.30, not 0.30 < 0.30
+const tau = () => parseFloat($("#tau").value);
+const all = () => [...mine, ...feed];
+
+// What the loaded model is, from /api/status (each stage's triage_model.json).
+function modelName(stage) {
+  if (!stage) return "unknown model";
+  if (stage.kind === "tfidf") return "TF-IDF + logistic regression";
+  const base = String(stage.base_model || "transformer").split("/").pop();
+  return "Fine-tuned " + base.replace(/^bertweet/i, "BERTweet").replace(/^roberta/i, "RoBERTa");
+}
+function modelAbout() {
+  const s1 = status.stage1, s2 = status.stage2;
+  const same = s1.kind === s2.kind && s1.base_model === s2.base_model;
+  const what = s1.kind === "tfidf"
+    ? "TF-IDF + logistic regression models"
+    : `fine-tuned ${esc(String(s1.base_model || "transformer"))} classifiers`;
+  return (same ? `Two ${what}, one per stage. ` : `Stage 1: ${esc(modelName(s1))}. Stage 2: ${esc(modelName(s2))}. `) +
+    "Trained only on CrisisBench; any tweet that appears in a dev or test set was removed from training. Stage 2 uses square-root-balanced class weights so rare categories count.";
+}
+
+const ICON = {
+  reply: '<svg viewBox="0 0 24 24"><path d="M1.75 10c0-4.42 3.58-8 8-8h4.37c4.48 0 8.13 3.64 8.13 8.13 0 2.96-1.6 5.68-4.18 7.11l-8.07 4.47V18h-.07c-4.49.1-8.18-3.51-8.18-8zm8-6c-3.32 0-6 2.69-6 6 0 3.37 2.77 6.08 6.13 6l.35-.01h1.77v2.3l5.1-2.82c1.95-1.08 3.15-3.12 3.15-5.36 0-3.38-2.74-6.11-6.13-6.11H9.75z"/></svg>',
+  rt: '<svg viewBox="0 0 24 24"><path d="M4.5 3.88l4.43 4.14-1.36 1.46L5.5 7.55V16c0 1.1.9 2 2 2H13v2H7.5c-2.21 0-4-1.79-4-4V7.55L1.43 9.48.07 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.21 0 4 1.79 4 4v8.45l2.07-1.93 1.36 1.46-4.43 4.14-4.43-4.14 1.36-1.46 2.07 1.93V8c0-1.1-.9-2-2-2z"/></svg>',
+  like: '<svg viewBox="0 0 24 24"><path d="M16.7 5.5c-1.11-.03-2.29.49-3.24 1.72l-.81 1.05-.8-1.05c-.95-1.23-2.13-1.75-3.25-1.72-1.08.04-2.13.6-2.84 1.56-1.41 1.9-1.07 5.35 2.5 8.68L12 19.13l3.73-3.39c3.57-3.33 3.91-6.78 2.5-8.68-.71-.96-1.76-1.52-2.84-1.56zM12 21.83l-5.06-4.6C2.9 13.47 2.44 9.29 4.5 6.5c1.08-1.46 2.72-2.37 4.46-2.43 1.12-.04 2.18.29 3.04.96.87-.67 1.93-1 3.05-.96 1.74.06 3.38.97 4.46 2.43 2.06 2.79 1.6 6.97-2.44 10.73L12 21.83z"/></svg>',
+  views: '<svg viewBox="0 0 24 24"><path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z"/></svg>',
+};
+
+async function api(path, body) {
+  const res = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : `${path}: HTTP ${res.status}`);
+  return data;
+}
+
+// --- predictions ------------------------------------------------------------
+// The server's result fields, renamed to the ones this page uses. A post Stage 1 filtered out
+// gets category "not_humanitarian" so the page's filters and sorting treat it as no category.
+const fromServer = r => ({
+  informative: r.informative,
+  category: r.informative ? r.category : NON_HUM,
+  p_informative: r.prob_informative,
+  p_category: r.category_confidence,
+  end_to_end: r.end_to_end_label,
+});
+
+// Sends posts with the current τ (in batches the server accepts); returns false (and drops the reply) if a newer request was sent meanwhile.
+let runs = 0;
+async function classify(posts) {
+  if (!posts.length) return true;
+  const sent = { tau: tau() }, run = ++runs;
+  $("#status").textContent = "Classifying…";
+  try {
+    const rs = [];
+    for (let i = 0; i < posts.length; i += CLASSIFY_MAX) {
+      const batch = posts.slice(i, i + CLASSIFY_MAX);
+      const data = await api("/api/classify", { tweets: batch.map(p => ({ id: String(p.id), text: p.text })), threshold: sent.tau });
+      if (run !== runs) return false;
+      rs.push(...data.results.map(fromServer));
+    }
+    posts.forEach((p, i) => { results[p.id] = rs[i]; });
+    shown = sent;
+    $("#status").textContent = "";
+    return true;
+  } catch (e) {
+    if (run !== runs) return false;  // a newer request was sent; let it decide what the page shows
+    $("#status").textContent = "";
+    $("#feed").innerHTML = `<div class="error">Couldn't classify: ${esc(e.message)}</div>`;
+    throw e;
+  }
+}
+
+// Same definition as the server's "Known mistakes": end-to-end prediction ≠ end-to-end gold.
+const isWrong = p => p.gold && results[p.id] && results[p.id].end_to_end !== p.gold;
+const needsReview = r => (r.informative && r.p_category < REVIEW_P_CATEGORY) || Math.abs(r.p_informative - shown.tau) < REVIEW_MARGIN;
+
+// --- rendering --------------------------------------------------------------
+function label(cat, informative) {
+  const name = informative ? CAT_NAME[cat] : "Filtered out";
+  const c = informative ? col(cat) : col(NON_HUM);
+  return `<span class="lab" style="background:color-mix(in srgb, ${c} 18%, white)"><span class="dot" style="background:${c}"></span>${name}</span>`;
+}
+
+// emails and phone numbers are hidden when shown; /classify still gets the full text (= the dataset's model input)
+const hideContacts = s => s.replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "[email]").replace(/(?<!\w)\+?\d(?:[\s().-]?\d){8,}(?!\w)/g, "[phone]");
+
+// CrisisBench's garbled characters are shown as the original (display only, like hideContacts; the model saw the garbled text).
+// (1) UTF-8 read as Windows-1252: "â€™" → "’". (2) an emoji escape cut to 4 hex digits: Ὂ5 → "Ὂ" + "5",
+// so 💥 arrives as "á½Š5". (0) the dataset turned the byte A0 into a space, so "á½ 2" is 😂 with that byte lost.
+const CP1252 = "€\x81‚ƒ„…†‡ˆ‰Š‹Œ\x8DŽ\x8F\x90‘’“”•–—˜™š›œ\x9DžŸ";  // bytes 0x80–0x9F
+const UTF8 = new TextDecoder("utf-8", { fatal: true });
+const MAC_ROMAN = { "‚Ä¶": "…", "‚Äô": "’", "‚Äò": "‘", "‚Äú": "“", "‚Äù": "”", "‚Äì": "–", "‚Äî": "—" };
+const toByte = c => { const i = CP1252.indexOf(c); return i >= 0 ? 0x80 + i : c.charCodeAt(0); };
+const unMojibake = run => { try { return UTF8.decode(Uint8Array.from(run, toByte)); } catch { return run; } };
+const fixText = s => s
+  .replace(/á([¼½¾¿]) (?=[0-9a-fA-F])/g, "á$1 ")
+  .replace(/[\u0080-ÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]{2,}/g, unMojibake)
+  .replace(/([ἀ-῿])([0-9a-fA-F])/g, (m, ch, d) => String.fromCodePoint(ch.codePointAt(0) * 16 + parseInt(d, 16)))
+  // (4) UTF-8 read as Mac Roman: "‚Ä¶" → "…" (the only sequences in this test set)
+  .replace(/‚Ä[¶ôòúùìî]/g, m => MAC_ROMAN[m])
+  // (3) characters CrisisBench itself replaced with U+FFFD can't be recovered: "What" + U+FFFD + "s" gets
+  // back its ’, U+FFFD before "@user" (a quoted retweet) its “, and the rest (lost emoji, e.g. U+FFFD "__F") is dropped.
+  .replace(/([A-Za-z])\ufffd{1,3}(?=(?:s|t|re|ll|ve|d|m)\b)/g, "$1’")
+  .replace(/(^|\s)\ufffd{2,3}(?=@)/g, "$1“")
+  .replace(/\ufffd[\ufffd_]*(?:[0-9A-Fa-f](?!\w))?/g, "")
+  .replace(/ {2,}/g, " ");
+// Also display only (the model gets the raw dataset text, the same input as the --errors file and metrics.json):
+// HTML entities from the Twitter API ("&amp;" → "&"; esc() escapes again when drawing),
+const decodeOnce = s => s.replace(/&(amp|lt|gt|quot|#39);/g, (m, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" }[e]));
+const decodeEntities = s => decodeOnce(decodeOnce(s));  // twice: one tweet has "&amp;gt;"
+// leftover CSV quoting: quotes around the whole tweet, \" escapes, and an unmatched quote at the very end,
+const cleanQuotes = s => {
+  const inner = s.slice(1, -1);
+  if (s.length > 1 && s[0] === '"' && s.at(-1) === '"' && !/(^|[^\\])"/.test(inner)) s = inner;
+  s = s.replace(/\\"/g, '"');
+  if ((s.match(/"/g) || []).length % 2 && s.endsWith('"')) s = s.slice(0, -1);
+  return s;
+};
+// and links and @handles, hidden like emails and phone numbers (links first, so a link's digits aren't read as a phone number).
+const LINK = /(?:https?:\/\/|www\.)\S*|pic\.twitter\.com\/\w+/g;  // \S*: a few links were cut to a bare "http://"
+const hideIdentity = s => hideContacts(s.replace(LINK, "HTTPURL")).replace(/(?<!\w)@\w+/g, "@USER");
+const shownText = s => hideIdentity(cleanQuotes(fixText(decodeEntities(s))));
+
+const snippet = s => { const t = [...shownText(s)]; return t.length > 100 ? t.slice(0, 98).join("") + "…" : t.join(""); };  // by character, so an emoji isn't cut in half
+
+function richText(s) {
+  // links, @handles and #hashtags look like X but aren't clickable (old t.co links, real accounts)
+  return esc(s).replace(/(https?:\/\/\S+|\bHTTPURL\b)|(^|[^\w&])([@#]\w+)/g,
+    (m, url, pre, tag) => url ? `<span class="lnk">${url}</span>` : `${pre}<span class="lnk">${tag}</span>`);
+}
+
+function eventName(ev) {
+  if (ev === "disaster_events") return "Mixed disaster events";
+  const s = ev.replace(/-ontopic$/, "").replace(/[_-]/g, " ");
+  return s.replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// avatars are decorative and carry no meaning: a soft tint of a Haribo color, picked from the tweet id so a post keeps its color
+const AVATAR_COLORS = ["#E3001B", "#F5C518", "#E8609A", "#9A3DBF", "#3AAA6A", "#F5841F", "#005CA9", "#1F8A9E"];
+const avatarColor = id => AVATAR_COLORS[[...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % AVATAR_COLORS.length];
+const SILHOUETTE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9.6" r="4.3"/><path d="M3.4 24.5c0-5 3.9-8.8 8.6-8.8s8.6 3.8 8.6 8.8z"/></svg>';
+
+// Like the extension's answer key: a "no action needed" gold also says what the annotators gave each stage
+// (informative or not, and the humanitarian label), since it can mean either.
+const goldName = p => p.gold !== NOT_ACTIONABLE ? CAT_NAME[p.gold] || p.gold
+  : `${CAT_NAME[NOT_ACTIONABLE]} (${p.goldInf === "informative" ? "informative" : "not informative"}, ${CAT_NAME[p.goldHum] || p.goldHum})`;
+
+function postHTML(p) {
+  const r = results[p.id];
+  const own = !p.gold;
+  // dataset authors are anonymous (the text masks them as @USER); the event goes in a context line, like X's "reposted" line
+  const name = own ? "You" : "Twitter user";
+  const handle = own ? "@responder_demo · just now" : "@USER";
+  const ctx = own ? "" : `<div class="ctx">${esc(eventName(p.event))} · CrisisBench test tweet</div>`;
+  const av = own
+    ? `<span class="av" style="background:#1d9bf0">R</span>`
+    : `<span class="av anon" style="--av:${avatarColor(String(p.id))}">${SILHOUETTE}</span>`;
+  let overlay = "";
+  if (r) {
+    const nums = r.informative
+      ? `<span class="num">p_category ${pct(r.p_category)} · p_informative ${pct(r.p_informative)}</span>`
+      : `<span class="num">p_informative ${pctDown(r.p_informative)} &lt; τ ${pct(shown.tau)}</span>`;
+    const gold = own ? "" : !isWrong(p)
+      ? `<span class="gold ok" title="Gold: ${GOLD_MEANS}">gold: ${goldName(p)} <b>✓</b></span>`
+      : `<span class="gold no" title="Gold: ${GOLD_MEANS}">gold: ${goldName(p)} <b>✗ wrong</b></span>`;
+    overlay = `<div class="overlay"><span class="yt">Y TRIAGE</span>${label(r.category, r.informative)}${nums}${needsReview(r) ? '<span class="flag">needs review</span>' : ""}${gold}</div>`;
+  }
+  return `<article class="post${r && !r.informative ? " filtered" : ""}${own ? " mine" : ""}" title="${own ? "your post" : "tweet id " + esc(p.id)}">
+    ${av}
+    <div class="body">
+      ${ctx}<div class="head"><b>${esc(name)}</b><span>${esc(handle)}</span></div>
+      <p class="text">${richText(shownText(p.text))}</p>
+      ${overlay}
+      <div class="actions">${ICON.reply}${ICON.rt}${ICON.like}${ICON.views}</div>
+    </div>
+  </article>`;
+}
+
+function visible() {
+  let rows = all().filter(p => results[p.id]);
+  if ($("#onlyWrong").checked) rows = rows.filter(isWrong);
+  if (tab === "triage") {
+    rows = rows.filter(p => results[p.id].informative && (!catFilter || results[p.id].category === catFilter))
+      .sort((a, b) => PRIORITY[results[a.id].category] - PRIORITY[results[b.id].category] || results[b.id].p_category - results[a.id].p_category);
+  } else if (tab === "filtered") {
+    rows = rows.filter(p => !results[p.id].informative).sort((a, b) => results[b.id].p_informative - results[a.id].p_informative);
+  }
+  return rows;
+}
+
+function renderFeed() {
+  const rows = visible();
+  const note = tab === "filtered" && rows.length
+    ? `<div class="empty">Stage 1 filtered these out (p_informative &lt; τ). Closest to the threshold first, so near-misses are on top.</div>` : "";
+  const left = feedTotal - feed.length;
+  const more = left > 0
+    ? `<div class="empty">Showing ${feed.length.toLocaleString("en-US")} of ${feedTotal.toLocaleString("en-US")} ${feedMode === "errors" ? "known mistakes" : "test tweets"}. <button class="linkbtn" id="loadMore">Load ${Math.min(FEED_CHUNK, left)} more</button></div>` : "";
+  $("#feed").innerHTML = (rows.length ? note + rows.map(postHTML).join("") : `<div class="empty">Nothing here.</div>`) + more;
+  if (left > 0) $("#loadMore").onclick = () => loadMore().catch(() => {});
+}
+
+// Next FEED_CHUNK tweets from /api/feed (in pages of FEED_PAGE), for the chosen disaster.
+async function fetchTweets(offset) {
+  const out = [];
+  while (out.length < FEED_CHUNK) {
+    const q = new URLSearchParams({ event: eventFilter, mode: feedMode, offset: offset + out.length, limit: FEED_PAGE });
+    const page = await api("/api/feed?" + q);
+    feedTotal = page.total;
+    out.push(...page.tweets.map(t => ({ id: t.id, text: t.text, gold: t.gold_end_to_end, event: t.event,
+      goldInf: t.gold_informativeness, goldHum: t.gold_humanitarian })));
+    if (!page.tweets.length || page.next_offset >= page.total) break;
+  }
+  return out;
+}
+
+async function loadMore() {
+  $("#status").textContent = "Loading…";
+  const added = await fetchTweets(feed.length);
+  feed = feed.concat(added);
+  if (await classify(added)) render();
+}
+
+async function loadFeed() {
+  feed = []; results = Object.fromEntries(mine.filter(p => results[p.id]).map(p => [p.id, results[p.id]]));
+  $("#status").textContent = "Loading…";
+  feed = await fetchTweets(0);
+  if (await classify(all())) render();
+}
+
+function renderChips() {
+  $("#chips").style.display = tab === "triage" ? "" : "none";
+  const counts = countCats();
+  $("#chips").innerHTML = `<button class="fchip${catFilter ? "" : " on"}" data-c="">All informative</button>` +
+    SHOWN_CATS.filter(([k]) => counts[k]).map(([k, n]) =>
+      `<button class="fchip${catFilter === k ? " on" : ""}" data-c="${k}"><span class="dot" style="background:${col(k)}"></span>${n} · ${counts[k]}</button>`).join("");
+  document.querySelectorAll(".fchip").forEach(b => b.onclick = () => { catFilter = b.dataset.c || null; render(); });
+}
+
+function countCats() {
+  const counts = {};
+  all().forEach(p => { const r = results[p.id]; if (r && r.informative) counts[r.category] = (counts[r.category] || 0) + 1; });
+  return counts;
+}
+
+function renderSide() {
+  const posts = all().filter(p => results[p.id]);
+  const rs = posts.map(p => results[p.id]);
+  const inf = rs.filter(r => r.informative);
+  const counts = countCats();
+  const urgent = posts.filter(p => results[p.id].informative && ACT_FIRST.includes(results[p.id].category));
+  $("#filteredTab").textContent = `Filtered out (${rs.length - inf.length})`;
+
+  $("#brief").innerHTML = `<b>${inf.length} of ${rs.length}</b> posts passed Stage 1 at τ = ${pct(shown.tau)}. ` +
+    `<b>${counts.requests_or_needs || 0}</b> look like requests for help and <b>${counts.missing_and_found_people || 0}</b> like missing/found reports.`;
+  $("#stats").innerHTML = [[rs.length, "read", ""], [inf.length, "informative", ""], [urgent.length, "act first", "red"], [rs.filter(needsReview).length, "needs review", ""]]
+    .map(([n, l, c]) => `<div class="stat ${c}"><b>${n}</b><span>${l}</span></div>`).join("");
+
+  $("#actfirst").innerHTML = urgent.sort((a, b) => results[b.id].p_category - results[a.id].p_category).slice(0, 6)
+    .map(p => `<div class="act">${esc(snippet(p.text))}
+      <div class="m"><span class="dot" style="background:${col(results[p.id].category)}"></span> ${CAT_NAME[results[p.id].category]} · p_category ${pct(results[p.id].p_category)}</div></div>`).join("")
+    || `<div class="act m">None in this feed.</div>`;
+
+  const scored = feed.filter(p => results[p.id]);
+  const wrong = scored.filter(isWrong);
+  const falseAlarms = wrong.filter(p => p.gold === NOT_ACTIONABLE).length;
+  const missed = wrong.filter(p => p.gold !== NOT_ACTIONABLE && results[p.id].end_to_end === NOT_ACTIONABLE).length;
+  // 4 decimals, as in results/summary.csv; the values are the end-to-end metrics.json next to the server's --errors file
+  const testNote = metrics
+    ? `<p class="note">On the full end-to-end test set (${Number(metrics.n).toLocaleString("en-US")} tweets, τ = ${metrics.threshold}), this model gets <b>${(metrics.accuracy * 100).toFixed(2)}%</b> right ` +
+      `(weighted F1 ${Number(metrics.weighted_f1).toFixed(4)}, macro F1 ${Number(metrics.macro_f1).toFixed(4)}). ` +
+      (feedMode === "errors"
+        ? `This view shows only the ${feedTotal.toLocaleString("en-US")} test tweets${eventFilter === "all" ? "" : " from " + esc(eventName(eventFilter))} it got wrong at τ = ${metrics.threshold}, so at that τ every post here is ✗.</p>`
+        : `This feed is drawn from that same set, so the numbers here should land nearby.</p>`)
+    : `<p class="note">Start the server with <code>--errors</code> to show the full test-set score here.</p>`;
+  $("#score").innerHTML = `<b>${scored.length - wrong.length} of ${scored.length}</b> feed posts match their gold label. Wrong: ${wrong.length}.` +
+    `<ul><li><b>${falseAlarms}</b> false alarms: no action needed, but the model sent it to a category</li>` +
+    `<li><b>${missed}</b> missed: needs action, but the model filtered it out or called it Other</li>` +
+    `<li><b>${wrong.length - falseAlarms - missed}</b> wrong category: needs action, but the model picked a different category</li></ul>` +
+    `<button class="linkbtn" id="showWrong">${$("#onlyWrong").checked ? "Show all posts" : "Show only the wrong ones"}</button>` +
+    testNote +
+    `<p class="note num"><b>Gold</b> = ${GOLD_MEANS}, the answer we score against. Each tweet has one, so some ✗ are label disagreements, not only model errors. ` +
+    `Reported numbers use a fixed τ = ${status.threshold} (not tuned); the slider is for exploring, not for choosing τ.</p>`;
+  $("#showWrong").onclick = () => { $("#onlyWrong").checked = !$("#onlyWrong").checked; render(); };
+
+  $("#cats").innerHTML = SHOWN_CATS.filter(([k]) => counts[k]).map(([k, n]) =>
+    `<button class="trow${catFilter === k ? " on" : ""}" data-c="${k}"><div><div class="k">${ACT_FIRST.includes(k) ? "Act first" : "Category"}</div><div class="t"><span class="dot" style="background:${col(k)}"></span>${n}</div></div><span class="n">${counts[k]} posts</span></button>`).join("");
+  document.querySelectorAll(".trow").forEach(b => b.onclick = () => {
+    catFilter = catFilter === b.dataset.c ? null : b.dataset.c;
+    tab = "triage"; document.body.classList.remove("summary"); render();
+  });
+
+  $("#aboutModel").innerHTML = `<b>Model:</b> ${esc(modelName(status.stage1))}. ${modelAbout()}`;
+  $("#aboutFeed").innerHTML = `<b>The feed:</b> ${feed.length} of the ${Number(status.feed_size).toLocaleString("en-US")} CrisisBench <b>test</b> tweets that have both an informativeness and a humanitarian label, in a fixed shuffled order (seed 0)` +
+    `${eventFilter === "all" ? "" : `, from ${esc(eventName(eventFilter))}`}${feedMode === "errors" ? ", known mistakes only" : ""}. ` +
+    // checked 11/16 on data/processed/: 0 of 3,430 share an ID or normalized text with stage1/stage2 train or dev
+    `None is in the training data: every dev and test tweet was removed from training, and none of these shares an ID or text (ignoring links, handles, punctuation and case) with a training or dev tweet (checked). ` +
+    `Handles, links, emails and phone numbers are hidden when shown; the model reads the original text. Each post shows its gold label (${GOLD_MEANS}) so wrong predictions are visible.`;
+}
+
+function render() {
+  const active = document.body.classList.contains("summary") ? "summary" : tab;
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.tab === active));
+  document.querySelectorAll(".navitem[data-go]").forEach(a => a.classList.toggle("on", a.dataset.go === tab));
+  if (!shown) return;
+  renderChips(); renderFeed(); renderSide();
+}
+
+// --- events -----------------------------------------------------------------
+function goTab(t) {
+  if (t === "summary") document.body.classList.add("summary");
+  else { document.body.classList.remove("summary"); tab = t; }
+  render(); window.scrollTo(0, 0);
+}
+document.querySelectorAll(".tab").forEach(b => b.onclick = () => goTab(b.dataset.tab));
+document.querySelectorAll(".navitem[data-go]").forEach(a => a.onclick = e => { e.preventDefault(); goTab(a.dataset.go); });
+$("#postNav").onclick = () => $("#draft").focus();
+$("#onlyWrong").onchange = render;
+$("#tau").oninput = () => { $("#tauVal").textContent = pct(tau()); };
+$("#tau").onchange = () => classify(all()).then(ok => ok && render(), () => {});
+const reloadFeed = () => loadFeed().catch(e => { $("#feed").innerHTML = `<div class="error">${esc(e.message)}</div>`; });
+$("#event").onchange = () => { eventFilter = $("#event").value; reloadFeed(); };
+$("#knownMistakes").onchange = () => { feedMode = $("#knownMistakes").checked ? "errors" : "all"; reloadFeed(); };
+
+$("#draft").oninput = () => {
+  const n = $("#draft").value.length;
+  $("#count").textContent = `${n} / 280`;
+  $("#count").classList.toggle("over", n > 280);
+  $("#send").disabled = !$("#draft").value.trim();
+};
+$("#composer").onsubmit = async e => {
+  e.preventDefault();
+  const text = $("#draft").value.trim();
+  if (!text) return;
+  const post = { id: `mine-${mine.length}`, text, gold: null, event: null };
+  // added before classifying and every post re-sent, so whichever request is newest (this one, a τ or model change) covers the whole feed
+  mine.unshift(post);
+  $("#draft").value = ""; $("#draft").oninput();
+  try {
+    if (!(await classify(all()))) return;
+  } catch {
+    mine = mine.filter(p => p !== post);
+    $("#draft").value = text; $("#draft").oninput();
+    return;
+  }
+  tab = "foryou"; document.body.classList.remove("summary");
+  render(); window.scrollTo(0, 0);
+};
+
+(async function init() {
+  try {
+    const [s, ev, labels] = await Promise.all([api("/api/status"), api("/api/events"), api("/api/labels")]);
+    status = s;
+    metrics = await api("/api/metrics").catch(() => null);  // needs --errors; the page works without it
+    // a Stage 2 label this page doesn't know (another spelling) still gets a name, a color and a chip, from the server's config.py
+    labels.categories.filter(c => !(c.label in CAT_NAME)).forEach(c => {
+      CAT_NAME[c.label] = c.display; PRIORITY[c.label] = SHOWN_CATS.length; SHOWN_CATS.push([c.label, c.display]);
+      document.documentElement.style.setProperty(`--c-${c.label}`, c.color);
+    });
+    if (!s.known_mistakes_available) {
+      $("#knownMistakes").disabled = true;
+      $("#knownMistakes").parentElement.title = "Start the server with --errors to turn this on";
+    }
+    // the server loads one model pair (--stage1/--stage2); the menu just names it
+    $("#backend").innerHTML = `<option>${esc(modelName(s.stage1))}</option>`;
+    $("#backend").title = "Set by the server's --stage1 / --stage2 flags";
+    $("#tau").value = s.threshold; $("#tauVal").textContent = pct(tau());
+    $("#event").insertAdjacentHTML("beforeend", ev.events.map(e =>
+      `<option value="${esc(e.event)}">${esc(eventName(e.event))} (${esc(e.disaster_type)}, ${e.count})</option>`).join(""));
+    await loadFeed();
+  } catch (e) {
+    $("#feed").innerHTML = `<div class="error">${esc(e.message === "Failed to fetch" ? "Can't reach the demo server. Start it with python server/app.py, then reload." : e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

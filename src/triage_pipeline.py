@@ -116,14 +116,16 @@ class TriagePipeline:
             raise ValueError("The Stage 1 model does not have the label '"
                              + config.INFORMATIVE_LABEL + "'. Is it really a Stage 1 model?")
 
-    def classify(self, texts):
-        """Return one result per text:
+    def classify(self, texts, threshold=None):
+        """Return one result per text (threshold defaults to self.threshold):
             informative          True / False (Stage 1 decision)
             prob_informative     Stage 1 probability
             category             Stage 2 label, or None if filtered out
             category_confidence  Stage 2 probability of that label, or None
             end_to_end_label     what the pipeline outputs overall
         """
+        if threshold is None:
+            threshold = self.threshold
         stage1_results = self.stage1.predict(texts)
 
         # Only informative tweets go to Stage 2.
@@ -131,7 +133,7 @@ class TriagePipeline:
         informative_texts = []
         for index in range(len(texts)):
             probability = stage1_results[index]["probabilities"][config.INFORMATIVE_LABEL]
-            if probability >= self.threshold:
+            if probability >= threshold:
                 informative_indexes.append(index)
                 informative_texts.append(texts[index])
 

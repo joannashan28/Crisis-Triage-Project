@@ -5,7 +5,7 @@
   "description": "Labels disaster tweets with a two-stage BERTweet triage model and lets responders filter the feed by category.",
   "content_scripts": [
     {
-      "matches": ["http://localhost:8000/*", "http://127.0.0.1:8000/*"],
+      "matches": ["http://localhost:8000/feed/*", "http://127.0.0.1:8000/feed/*"],
       "js": ["content.js"],
       "css": ["overlay.css"],
       "run_at": "document_idle"

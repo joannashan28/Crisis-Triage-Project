@@ -32,13 +32,14 @@ import argparse
 import os
 import random
 import sys
-from typing import List
+from typing import List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Let this file import the modules in src/.
 SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -46,11 +47,12 @@ PROJECT_ROOT = os.path.dirname(SERVER_DIR)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 
 import config  # noqa: E402
-from crisisbench_io import read_tsv  # noqa: E402
+from crisisbench_io import load_json, read_tsv  # noqa: E402
 from triage_pipeline import TriagePipeline  # noqa: E402
 
 
 FEED_DIR = os.path.join(PROJECT_ROOT, "demo", "feed")
+TRIAGE_DIR = os.path.join(PROJECT_ROOT, "demo", "triage")
 MAX_TWEETS_PER_REQUEST = 100
 MAX_FEED_PAGE = 50
 
@@ -62,6 +64,9 @@ class TweetIn(BaseModel):
 
 class ClassifyRequest(BaseModel):
     tweets: List[TweetIn]
+    # Optional Stage 1 cutoff for this request only (the triage page's slider).
+    # Left out, the server's --threshold is used, as before.
+    threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 def parse_args():
@@ -237,20 +242,47 @@ def create_app(args):
                                 detail="Send at most " + str(MAX_TWEETS_PER_REQUEST)
                                 + " tweets per request.")
 
+        threshold = request.threshold
+        if threshold is None:
+            threshold = pipeline.threshold
+
         texts = []
         for tweet in request.tweets:
             texts.append(tweet.text)
-        results = pipeline.classify(texts)
+        results = pipeline.classify(texts, threshold)
 
         response = []
         for index in range(len(request.tweets)):
             result = dict(results[index])
             result["id"] = request.tweets[index].id
             response.append(result)
-        return {"results": response, "threshold": pipeline.threshold}
+        return {"results": response, "threshold": threshold}
 
-    # The feed page. Mounted last so it does not cover the /api routes.
-    app.mount("/", StaticFiles(directory=FEED_DIR, html=True), name="feed")
+    @app.get("/api/metrics")
+    def metrics():
+        # The end-to-end metrics.json next to the --errors predictions file,
+        # i.e. the test-set scores of the models that are loaded.
+        if args.errors is None:
+            raise HTTPException(status_code=404,
+                                detail="Start the server with --errors to show test scores.")
+        path = os.path.join(os.path.dirname(os.path.abspath(args.errors)), "metrics.json")
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail=path + " not found.")
+        data = load_json(path)
+        keys = ["system", "n", "accuracy", "weighted_f1", "macro_f1", "threshold",
+                "triage_rates", "category_recall", "threshold_sweep"]
+        return {key: data.get(key) for key in keys}
+
+    # The pages. Mounted last so they do not cover the /api routes.
+    # /feed/ is the plain X-style feed that the Chrome extension labels;
+    # / is the standalone triage page, which needs no extension.
+    # Without this, /feed (no slash) falls through to the triage mount and 404s.
+    @app.get("/feed", include_in_schema=False)
+    def feed_without_slash():
+        return RedirectResponse("/feed/")
+
+    app.mount("/feed", StaticFiles(directory=FEED_DIR, html=True), name="feed")
+    app.mount("/", StaticFiles(directory=TRIAGE_DIR, html=True), name="triage")
 
     return app
 
