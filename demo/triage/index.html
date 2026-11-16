@@ -70,6 +70,8 @@
   .composer .row .over { color: var(--red); }
   .composer .row button { background: var(--text); color: #fff; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 700; }
   .composer .row button:disabled { opacity: .5; cursor: default; }
+  .composer .row button.ghost { margin-right: auto; background: none; color: var(--blue); border: 1px solid #cfd9de; }
+  .composer .row button.ghost:hover { background: #e8f5fd; }
 
   .post { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
   .post:hover { background: rgba(0,0,0,.03); }
@@ -183,7 +185,7 @@
       <span class="av" style="background:#1d9bf0">R</span>
       <div>
         <textarea id="draft" placeholder="What is happening?! Type or paste a post to classify it." rows="2"></textarea>
-        <div class="row"><span id="count">0 / 280</span><button type="submit" id="send" disabled>Classify</button></div>
+        <div class="row"><button type="button" class="ghost" id="example" title="Fills in a post written for this demo (not from CrisisBench); click Classify to send it">Try an example</button><span id="count">0 / 280</span><button type="submit" id="send" disabled>Classify</button></div>
       </div>
     </form>
 
@@ -601,6 +603,27 @@ $("#draft").oninput = () => {
   $("#count").classList.toggle("over", n > 280);
   $("#send").disabled = !$("#draft").value.trim();
 };
+// "Try an example": new posts written for the demo, so none is in CrisisBench (test-set tweets are already in the feed,
+// with their gold labels). In order: a clear request, noise near τ, a missing person read as Other, a confident wrong
+// category, then more. Filled in, not sent, so the audience sees Classify clicked.
+const EXAMPLES = [
+  "We urgently need drinking water and baby formula at the Lincoln High shelter #flood",
+  "can't believe the game got cancelled because of the storm lol",
+  "Has anyone heard from my sister Maria? She was in the Rio Grande apartments when the quake hit. Please share",
+  "Red Cross is collecting blankets and canned food at the stadium this weekend, volunteers welcome #hurricane",
+  "trapped on the roof with my two kids, water still rising, please send a boat",
+  "At least 12 people dead and dozens injured after the tornado hit downtown",
+  "Highway 101 bridge collapsed near the river and power is out across the east side #earthquake",
+  "Stay off the roads tonight, flash flood warning until 6am",
+  "this traffic is a disaster lmao",
+  "my dad is stuck on a lifeboat in a flood",
+];
+let exampleAt = 0;
+$("#example").onclick = () => {
+  $("#draft").value = EXAMPLES[exampleAt++ % EXAMPLES.length];
+  $("#draft").oninput(); $("#draft").focus();
+};
+
 $("#composer").onsubmit = async e => {
   e.preventDefault();
   const text = $("#draft").value.trim();
