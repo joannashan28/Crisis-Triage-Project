@@ -196,6 +196,8 @@ Trained models are not in this repo; each BERTweet model is over 500 MB, which i
 
 ## 5. Run the demo
 
+Class Presentation Link: https://docs.google.com/presentation/d/1mo2jdzuSjY1Q4LVgcBZEr2QoAeO6dOwUu-Edknt6ZP8/edit?usp=sharing
+
 **Start the server** (from the project root, with the virtual environment active):
 
 ```bash
