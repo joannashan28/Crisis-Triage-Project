@@ -196,6 +196,8 @@ Trained models are not in this repo; each BERTweet model is over 500 MB, which i
 
 ## 5. Run the demo
 
+NOTE: Before we presented, we decided that we wanted to substantially change the Chrome extension for our demo. While the original code to run the extension is included in the `main` branch and still works, we have a separate branch called `day-of-demo` that includes the code for the new extension that we ended up showing in class.
+
 Class Presentation Link: https://docs.google.com/presentation/d/1mo2jdzuSjY1Q4LVgcBZEr2QoAeO6dOwUu-Edknt6ZP8/edit?usp=sharing
 
 **Start the server** (from the project root, with the virtual environment active):
@@ -246,7 +248,7 @@ The interactive parts:
 
 ## Generative AI disclosure
 
-We used Claude Opus 5.5 for a wide variety of tasks related to this project. Specifically, Claude helped draft the original file tree so we could figure out what modules we needed for the tweet classifier to come to fruition. After we figured out the entire pipeline and what models/tests we wanted to run, we prompted Claude to helped us write the original/draft code files. In regards to the data, we decided which tweets we wanted to remove from the training/test sets and prompted Claude to help us write the code that would allow us to clean up the data. We examined and edited all the code Claude generated for accuracy in order to ensure it was doing what we intended for it to do. We decided exactly how we wanted the Chrome extension to look and run and then prompted Claude to help us write the code for the extension since none of us have ever done something like that before. 
+We used Claude Opus 5.5 for a wide variety of tasks related to this project. Specifically, Claude helped draft the original file tree so we could figure out what modules we needed for the tweet classifier to come to fruition. After we figured out the entire pipeline and what models/tests we wanted to run, we prompted Claude to helped us write the original/draft code files. In regards to the data, we decided which tweets we wanted to remove from the training/test sets and prompted Claude to help us write the code that would allow us to clean up the data. We examined and edited all the code Claude generated for accuracy in order to ensure it was doing what we intended for it to do. We decided exactly how we wanted the Chrome extension to look and run and then prompted Claude to help us write the code for the extension (have two versions of the extension, an original and an improved version for the demo) since none of us have ever done something like that before. 
 
 ## References
 
