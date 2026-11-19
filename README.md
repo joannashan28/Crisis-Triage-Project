@@ -1,15 +1,15 @@
 # Triaging disaster tweets with a two-stage BERTweet pipeline
 
-COSC 72/272 final project: Ella Jacobs, Carys Kirlew, Joanna Shan
+COSC 72/272 final project: Carys Kirlew, Joanna Shan, Ella Jacobs
 
-This project sorts disaster tweets so responders can find actionable posts faster. Each tweet goes through two classifiers:
+This project categorizes disaster tweets so responders can find and prioritize actionable posts faster. Each tweet goes through two classifiers:
 
 ```
 tweet ──> Stage 1: informative?
             ├─ no  ──> "Filtered out" tab (kept for review, never deleted)
-            └─ yes ──> Stage 2: which humanitarian category?
-                         requests or needs, infrastructure damage, missing or found people, ...
-                         or "Other" (informative, but no humanitarian category)
+            └─ yes ──> Stage 2: Which humanitarian category?
+                         Requests or needs, infrastructure damage, missing or found people, ...
+                         or "Other" (informative but non-humanitarian)
 ```
 
 Both stages are fine-tuned BERTweet models trained only on CrisisBench (Alam et al., 2021). The demo is a simulated X-style feed of CrisisBench test tweets, with a Chrome extension that labels and filters them.
@@ -41,15 +41,7 @@ scripts/run_all.sh        the whole experiment in one command
 
 ## 1. Setup
 
-You need Python 3.10 or newer and a terminal (macOS, Linux, or WSL on Windows). Training needs a GPU to finish in a reasonable time. `train_transformer.py` picks the device automatically, in this order:
-
-| Device | Hardware | Notes |
-|---|---|---|
-| `cuda` | NVIDIA GPU (Linux, Windows, lab or cluster machines) | fastest; uses mixed precision |
-| `mps` | Apple Silicon Mac (M1/M2/M3/M4) | works, full precision, slower than a good NVIDIA GPU |
-| `cpu` | anything else, including Intel Macs | works but is very slow for BERTweet; the script prints a warning |
-
-Everything else (data prep, baselines, the demo with TF-IDF models) runs on CPU.
+You need Python 3.10 or newer and a terminal (macOS, Linux, or WSL on Windows). Training needs a GPU to finish in a reasonable time. Everything else (data prep, baselines, the demo with TF-IDF models) runs on CPU.
 
 **Get the code:**
 
@@ -74,10 +66,6 @@ Run `source .venv/bin/activate` again in every new terminal before running any c
 ```bash
 python -c "import torch; print('cuda:', torch.cuda.is_available(), '| mps:', torch.backends.mps.is_available())"
 ```
-
-On a Mac, `mps: True` is what you want. On an NVIDIA machine, you want `cuda: True` (`nvidia-smi` should also list the GPU). If both print `False`, training will fall back to CPU. On an NVIDIA machine, reinstall PyTorch with the CUDA build that matches your driver (see https://pytorch.org/get-started/locally/) and check again. When training starts, the script prints `Using device: ...`, so you can confirm which one it picked.
-
-**Training on a remote machine or school cluster?** Connect with `ssh`, repeat the steps above there, and see the "Long runs" note in section 3c. To use the demo from your own laptop, see the port-forwarding note in section 5.
 
 ## 2. Get the data
 
@@ -114,7 +102,7 @@ Or step by step, as below. Every script also explains itself with `--help`, for 
 python src/prepare_data.py --crisisbench-dir /path/to/crisis_datasets_benchmarks_v1.0
 ```
 
-The script writes `data/processed/` and `data/processed/data_report.json`, which records every count. Check it once and keep it for the report.
+The script writes `data/processed/` and `data/processed/data_report.json`, which records every count.
 
 **Check this on the first run:** the script verifies that the label spellings in `config.py` match the real files. If one doesn't match, it stops and prints the labels it actually found. It also works out each tweet's disaster type from its event name (for example, `2015_nepal_earthquake` becomes earthquake), using keyword rules in `config.py`, and prints any event names that matched no rule. If one of those clearly has a type, add a keyword to `DISASTER_TYPE_RULES` and rerun. The full event-to-type mapping is saved in `data_report.json`.
 
@@ -141,7 +129,7 @@ for SEED in 1 2 3; do
 done
 ```
 
-Stage 1 takes longer than Stage 2 because its training set is roughly twice as large. The script prints the elapsed time every 50 steps, so you can estimate the total from the first epoch. If time is short, finish seed 1 for both stages first; that's enough for the demo.
+Stage 1 takes longer than Stage 2 because its training set is roughly twice as large.
 
 **Long runs.** Training can take hours, and closing the terminal or losing an SSH connection kills a normal command. Run it inside `tmux` (or `screen`) so it keeps going:
 
@@ -159,14 +147,6 @@ nohup bash -c 'for SEED in 1 2 3; do
   python src/train_transformer.py --stage 2 --seed $SEED
 done' > train.log 2>&1 &
 tail -f train.log                 # watch progress (Ctrl+c stops watching, not training)
-```
-
-On an NVIDIA machine, use `nvidia-smi` in another terminal to confirm the GPU is busy. **On a Mac**, a sleeping laptop pauses training; put `caffeinate -i` in front of the command (for example `caffeinate -i python src/train_transformer.py --stage 1 --seed 1`) and keep the laptop plugged in. On a shared cluster that uses a job scheduler such as Slurm, put the commands in a batch script and submit it with `sbatch` instead.
-
-The comparison with general-text pretraining is optional (same architecture as BERTweet):
-
-```bash
-python src/train_transformer.py --stage 2 --seed 1 --model-name roberta-base
 ```
 
 ### 3d. Score the full pipeline
@@ -210,18 +190,9 @@ runs/end_to_end/<stage1 run>__<stage2 run>/
     confusion_matrix.png
 ```
 
-If you trained on a remote machine, copy `runs/` and `results/` to your own computer before the session or account expires. For example, from your laptop:
-
-```bash
-scp -r user@remote-host:~/Crisis-Triage-Project/runs ./
-scp -r user@remote-host:~/Crisis-Triage-Project/results ./
-```
-
-(`rsync -av` works too and can resume an interrupted copy.)
-
 ## Trained models
 
-Trained models are not in this repo; each BERTweet model is over 500 MB, past GitHub's file-size limit. Rebuild them with the steps in section 3. The demo needs the seed 1 models for both stages, the end-to-end run for seed 1, and `data/processed/` (from section 3a).
+Trained models are not in this repo; each BERTweet model is over 500 MB, which is larger than GitHub's file-size limit. The trained models can be rebuilt from the steps in section 3. The demo needs the seed 1 models for both stages, the end-to-end run for seed 1, and `data/processed/` (from section 3a).
 
 ## 5. Run the demo
 
@@ -238,17 +209,9 @@ Leave this terminal open; the server runs until you press `Ctrl+c`.
 
 If BERTweet isn't trained yet, the TF-IDF models work the same way. Point `--stage1` and `--stage2` at `runs/tfidf_lr/stage1/seed0/model` and `runs/tfidf_lr/stage2/seed0/model`, and set `--errors` to the TF-IDF end-to-end run. Use the `--errors` file that matches the loaded models; otherwise the "Known mistakes" tab will show the wrong tweets.
 
-**Load the extension (once):** the extension runs in Chrome on the computer where you open the demo. Open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and choose the `extension/` folder.
+**Load the extension (once):** The extension runs in Chrome on the computer where you open the demo. Open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and choose the `extension/` folder.
 
 **Open** http://127.0.0.1:8000 in Chrome.
-
-**Server on a remote machine?** If the server runs over SSH, forward its port to your laptop from a second terminal on the laptop, then open the same address in your local Chrome:
-
-```bash
-ssh -L 8000:127.0.0.1:8000 user@remote-host
-```
-
-The `extension/` folder and the repo copy you load it from must be on your laptop too (clone the repo there, or `scp` the folder).
 
 The interactive parts:
 
@@ -258,11 +221,7 @@ The interactive parts:
 - **Show answer key** puts the annotators' labels next to the model's and highlights disagreements.
 - **Known mistakes** shows only test tweets the pipeline got wrong, which is useful for the failure-case part of the demo.
 
-Record a backup video of the demo in case the live version breaks during the presentation.
-
 ## 6. Design decisions
-
-These are documented here so the report, code, and demo stay consistent.
 
 **Data and leakage.** We use CrisisBench's official English splits. The two tasks were split separately, so the same tweet can be in one task's test set and the other task's training set. We remove from all training sets any tweet whose ID or normalized text appears in any dev or test set, and from dev sets anything in a test set. Test sets are unchanged, so our test results are on the same tweets as published CrisisBench numbers. Removing leakage cut the training sets by about 17% (Stage 1) and 30% (Stage 2), though, so our models train on less data than the published CrisisBench baselines. Exact counts are in `data/processed/data_report.json`.
 
@@ -276,15 +235,6 @@ These are documented here so the report, code, and demo stay consistent.
 
 **Model selection.** For each run we keep the epoch with the best dev weighted F1. The test set is scored once.
 
-**Settings.** BERTweet uses learning rate 2e-5, batch size 32, 3 epochs, 10% warmup, weight decay 0.01, max length 128, and mixed precision on NVIDIA GPUs only (Apple Silicon and CPU runs use full precision). Every run's actual settings, including batch size, are saved in its `metrics.json`; if a run ran out of GPU memory and was redone with `--batch-size 16`, its `metrics.json` records that.
-
-**Changes from the proposal:**
-
-- The single-stage comparison was dropped; we built only the two-stage pipeline.
-- BERTweet is the only main model. The baselines are majority class and TF-IDF with logistic regression, with RoBERTa as an optional comparison.
-- The held-out disaster-type split was dropped. We report results by disaster type on the official test set instead.
-- No hand-labeled recent-disaster set and no scraper. Training, testing, and the demo use only CrisisBench.
-
 ## 7. Limitations to keep in mind
 
 - Disaster types appear in both training and test, so these results do not show how the model handles a new kind of disaster.
@@ -294,32 +244,9 @@ These are documented here so the report, code, and demo stay consistent.
 
 ## Generative AI disclosure
 
-We used Claude (Anthropic, Claude Opus 5.5, via claude.ai) substantially in this project.
-
-**What it produced**
-- Nearly all of the code in `src/`, `server/`, `demo/`, `extension/`, and `scripts/`: data preparation and leakage removal, the baselines, BERTweet fine-tuning, evaluation, the summary, significance, and error-review scripts, the demo server, the simulated feed, and the Chrome extension.
-- The first draft of this README.
-- A draft outline of our presentation slides.
-- Fixes for errors we hit while running the code: the disaster-type mapping, Apple Silicon GPU support, a GPU out-of-memory crash, and the feed's "Show more" behavior.
-
-**Decisions the team made**
-- [FILL IN: e.g., the two-stage design, dropping the single-stage comparison, using only BERTweet plus two baselines, using only CrisisBench data, skipping the held-out disaster-type split]
-
-**How we checked it**
-- [FILL IN: what you ran and checked, e.g., data counts in data_report.json against our proposal's exploration, the leakage-removal counts, the disaster-type mapping for all 61 events]
-- [FILL IN: who reviewed which files, and anything you changed or rejected]
-- [FILL IN: how you checked results, e.g., BERTweet against the baselines]
-- The interpretation of results and the analysis in our report were written by the team. [Edit if not true.]
-
-**Earlier use (proposal stage)**
-- Claude Code was used to build an early prototype with fabricated posts from the LA fire. That prototype is not part of the final project.
-- Claude helped plan our division of labor, and wrote pseudocode for our initial data exploration.
+We used Claude Opus 5.5 for a wide variety of tasks related to this project. Specifically, Claude helped draft the original file tree so we could figure out what modules we needed for the tweet classifier to come to fruition. After we figured out the entire pipeline and what models/tests we wanted to run, we prompted Claude to helped us write the original/draft code files. In regards to the data, we decided which tweets we wanted to remove from the training/test sets and prompted Claude to help us write the code that would allow us to clean up the data. We examined and edited all the code Claude generated for accuracy in order to ensure it was doing what we intended for it to do. We decided exactly how we wanted the Chrome extension to look and run and then prompted Claude to help us write the code for the extension since none of us have ever done something like that before. 
 
 ## References
 
 - Alam, F., Sajjad, H., Imran, M., & Ofli, F. (2021). CrisisBench: Benchmarking crisis-related social media datasets for humanitarian information processing. *ICWSM*. Data and code: https://github.com/firojalam/crisis_datasets_benchmarks
 - Nguyen, D. Q., Vu, T., & Nguyen, A. T. (2020). BERTweet: A pre-trained language model for English Tweets. *EMNLP: System Demonstrations*. Model: https://huggingface.co/vinai/bertweet-base
-- Liu, Y., et al. (2019). RoBERTa: A robustly optimized BERT pretraining approach. arXiv:1907.11692.
-- Wolf, T., et al. (2020). Transformers: State-of-the-art natural language processing. *EMNLP: System Demonstrations*.
-- Pedregosa, F., et al. (2011). Scikit-learn: Machine learning in Python. *JMLR*, 12.
-- The original datasets that CrisisBench combines are listed, with citations, in the CrisisBench README. Cite them too.
