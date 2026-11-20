@@ -15,7 +15,6 @@ tweet ──> Stage 1: informative?
 Both stages are fine-tuned [BERTweet](https://huggingface.co/vinai/bertweet-base) models trained on [CrisisBench](https://github.com/firojalam/crisis_datasets_benchmarks) (Alam et al., 2021). We compare them against a majority-class baseline and TF-IDF + logistic regression, score each stage on its own, and score the full pipeline end to end.
 
 - **Slides:** https://docs.google.com/presentation/d/1mo2jdzuSjY1Q4LVgcBZEr2QoAeO6dOwUu-Edknt6ZP8/edit?usp=sharing
-- **Demo video:** [TODO: add link]
 - **Branches:** `main` has the experiments and the original Chrome-extension demo. `day-of-demo` has the standalone triage page we showed in class (see [Run the demo](#5-run-the-demo)).
 
 ## Results
